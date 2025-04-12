@@ -1,4 +1,4 @@
-# Retention_Analysis
+# Retention Analysis
 
 
 ## Overview
@@ -26,7 +26,7 @@ This project involves conducting a Cohort Analysis using a real world dataset. T
   Download the dataset in Compressed form [Data](https://github.com/Analyst-Aslam/Retention_Analysis/blob/main/data.csv.zip).
 
 - **Power BI Dashboard File**
-  Download the dashboard [Retention Analysis](https://github.com/Analyst-Aslam/Data_Workforce_Analytics-Power_BI_Analysis/blob/main/Data%20Workforce%20Analytics.pbix)
+  Download the dashboard [Retention Analysis](https://github.com/Analyst-Aslam/Retention_Analysis/blob/main/Retention%20Analysis.pbix)
 ---
 
 ### Steps to Load the Dashboard:
@@ -38,41 +38,102 @@ This project involves conducting a Cohort Analysis using a real world dataset. T
 
 ---
 
-## Visualizations Included
+## STEPS
 
-`The Data is cleaned and transformed in Power BI for Analysis. The following Visualizations are created to understand the key features included in the data.`
+### Step 1: Create a Calendar Table
 
-- **Happiness with Salary Gauge**  
-  Shows the satisfaction level with salaries among data professionals.
+Use the following DAX code to create a calendar table with rich date attributes:
 
-- **Happiness with Work/Life Balance Gauge**  
-  Visualizes satisfaction with work-life balance across demographics.
+```dax
+Calendar = 
+ADDCOLUMNS(
+    CALENDAR(DATE(2010,1,1), DATE(2011,12,31)),
+    "Year", YEAR([Date]),
+    "Month Number", MONTH([Date]),
+    "Month Name", FORMAT([Date], "MMM"),
+    "Year-Month", FORMAT([Date], "YYYY-MMM"),
+    "Quarter", "Q" & FORMAT([Date], "Q"),
+    "Weekday", FORMAT([Date], "dddd"),
+    "Weekday Short", FORMAT([Date], "ddd")
+)
+```
+
+> **Model View**: After creating this table, connect  
+> `Calendar[Date]` ➝ `data[InvoiceDate]` using a one-to-many relationship.
+
+---
+
+### Step 2: Calculate Cohort Date for Each Customer
+
+This calculated column returns the **end of the month of each customer's first purchase**.
+
+```dax
+CohortDate = 
+CALCULATE(
+    EOMONTH(MIN(data[InvoiceDate]), 0),
+    ALLEXCEPT(data, data[CustomerID])
+)
+```
+
+---
+
+### Step 3: Create a Measure to Count Distinct Customers
+
+This measure returns the number of unique customers:
+
+```dax
+CustomerCount = DISTINCTCOUNT(data[CustomerID])
+```
+
+---
+
+### Step 4: Create a Cohort Column to Show Month Difference
+
+This column shows the number of months between the cohort date and the transaction invoice date. It's useful for building **cohort matrices**.
+
+```dax
+CohortColumn = 
+DATEDIFF(
+    data[CohortDate],
+    EOMONTH(data[InvoiceDate], 0),
+    MONTH
+)
+```
+### Step 5: Create a Cohort Table
+
+- **Select Matrix Visualization**
+- **Add CohortColumn to Column**
+- **Add CohortDate to Rows**
+- **Add CustomerCount to Values**
+
+### Step 6: Create a Retention Table
+
+Create a Measure as
+
+```dax
+Cohort = 
+    VAR _FirstMonth=CALCULATE(data[CustomerCount],FILTER(ALL(data[CohortColumn]),data[CohortColumn]=0))
+    VAR _Cohort =DIVIDE(data[CustomerCount],_FirstMonth)
+RETURN _Cohort
+```
+
+- **Select Matrix Visualization**
+- **Add CohortColumn to Column**
+- **Add CohortDate to Rows**
+- **Add Cohort to Values**
 
 
 ---
-## Key Insights & Analysis
-
-#### 1. What is the average age of data professionals surveyed?
-- The average age of respondents is around **30 years**, indicating that the field is dominated by young professionals.
-
-#### 2. Which country has the most respondents?
-- **United States** has the most number of respondents.
-
-
 
 ## Potential Use Cases
 
-- **Job Market Research**  
-  Helps job seekers understand salary benchmarks and trends in job satisfaction.
+- **User Engagement Tracking**  
 
-- **HR & Recruitment Insights**  
-  Assists companies in assessing compensation standards and employee expectations.
+- **Revenue/LTV Analysis**  
 
-- **Education & Training Recommendations**  
-  Guides institutions in structuring relevant data science programs and curriculum.
+- **Marketing Campaign Performance**  
 
-- **Industry Trends Analysis**  
-  Identifies shifts in data-related job roles, technologies, and skillsets.
+- **Churn Behaviour**  
 
 ---
 
